@@ -100,8 +100,10 @@ Thesis-AutoGluon-TXF-Research/
 1. **依賴**：`pip install -r requirements.txt`（見根目錄 `requirements.txt`）。
 2. **設定**：路徑由根目錄 `config.py` 統一管理；可設環境變數 `DATA_ROOT`、`PROJECT_ROOT` 覆寫。
 3. **資料準備**：將原始 K 線放入 `data/raw/TX2011~20231222-1K/`，目標變數放入 `data/target/y.xlsx`（或 `y.csv`）。詳見 [data/README.md](data/README.md)。
-4. **執行流程**：
-   - **全流程**：`python main.py`
-   - **單步**：`python main.py --step 1`（1～5）
-   - **列出步驟**：`python main.py --list`
-   - main 會依序呼叫各 `scripts/0X_*/run.py`，run.py 再執行該目錄下對應腳本（如 `merge_and_train.py`）；尚未放入腳本時會跳過並提示。
+4. **所有程式僅讀寫 data/**：各腳本一律從 `config` 取得路徑，輸入與產出皆在 `data/` 下，無其他目錄寫入。
+5. **執行方式**（二擇一或並用）：
+   - **手動單檔**：進入該模組目錄後直接執行，例如  
+     `cd scripts/02_feature_compression && python split_by_cutoff.py`  
+     各腳本與 data/ 的對應見 [scripts/README_scripts.md](scripts/README_scripts.md)。
+   - **由 main 依序跑**：  
+     `python main.py`（全流程）、`python main.py --step 2`（只跑步驟 2）、`python main.py --list`（列步驟）。
