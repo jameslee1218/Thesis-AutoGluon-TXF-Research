@@ -21,7 +21,7 @@ flowchart LR
 
     subgraph S3["③ 01 資料與指標"]
         m01["01_data_ingestion<br/>指標計算與篩選"]
-        extr["indicators_extracted<br/>7 群組"]
+        extr["indicators_extracted<br/>篩選後群組"]
     end
 
     subgraph S4["④ 02 三截點壓縮"]
@@ -31,7 +31,6 @@ flowchart LR
 
     subgraph S5["⑤ 03 合併與訓練"]
         merge["merge_and_train<br/>日表 + Y"]
-        merged["merged 三組"]
         ag["AutoGluon 訓練<br/>每截點一組"]
         pred["預測／模型"]
     end
