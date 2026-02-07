@@ -23,6 +23,9 @@ DATA_ROOT = Path(_DATA_ROOT)
 # 為相容舊腳本：OUTPUT_ROOT 指向同一 data（產出與輸入共用 data/）
 OUTPUT_ROOT = DATA_ROOT
 
+# 三截點代號（與 data/dataset、output_* 對應）
+CUTOFFS = ("0900", "0915", "0930")
+
 # ---------- 輸入（需自備或由 01 產出）----------
 def get_raw_kline_dir():
     """原始 1 分鐘 K 線目錄。"""
@@ -53,6 +56,10 @@ def get_dataset_dir(cutoff: str = "0900"):
 def get_output_0900_dir():
     """02 壓縮與 03 合併產出：output_0900（W*、merged_for_autogluon）。"""
     return DATA_ROOT / "output_0900"
+
+def get_output_cutoff_dir(cutoff: str):
+    """依截點代號取得 output 目錄，如 output_0900、output_0915、output_0930。"""
+    return DATA_ROOT / f"output_{cutoff}"
 
 def get_merged_for_autogluon_dir():
     """03 合併表輸出目錄。"""

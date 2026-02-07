@@ -97,6 +97,11 @@ Thesis-AutoGluon-TXF-Research/
 
 ## 使用方式
 
-1. **資料準備**：將原始 K 線放入 `data/raw/TX2011~20231222-1K/`，目標變數放入 `data/target/y.xlsx`（或 `y.csv`）。詳見 [data/README.md](data/README.md)。
-2. **路徑覆寫**：若 `data/` 不在 repo 下，可設環境變數 `DATA_ROOT` 指向實際目錄（本機或 Colab 皆可）。
-3. **依序執行**：進入各模組目錄執行對應腳本，或依 `scripts/README_scripts.md` 總覽執行。
+1. **依賴**：`pip install -r requirements.txt`（見根目錄 `requirements.txt`）。
+2. **設定**：路徑由根目錄 `config.py` 統一管理；可設環境變數 `DATA_ROOT`、`PROJECT_ROOT` 覆寫。
+3. **資料準備**：將原始 K 線放入 `data/raw/TX2011~20231222-1K/`，目標變數放入 `data/target/y.xlsx`（或 `y.csv`）。詳見 [data/README.md](data/README.md)。
+4. **執行流程**：
+   - **全流程**：`python main.py`
+   - **單步**：`python main.py --step 1`（1～5）
+   - **列出步驟**：`python main.py --list`
+   - main 會依序呼叫各 `scripts/0X_*/run.py`，run.py 再執行該目錄下對應腳本（如 `merge_and_train.py`）；尚未放入腳本時會跳過並提示。
