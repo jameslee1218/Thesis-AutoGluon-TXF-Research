@@ -53,11 +53,8 @@ flowchart LR
     m02 --> out3
     out3 --> merge
     out3 --> viz
-    merge --> merged
-    merge --> ag
-    ag --> pred
+    merge --> ag --> pred
     pred --> bt
-    merged --> bt
     bt --> bto
     viz --> vis
 ```
