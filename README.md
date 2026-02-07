@@ -6,109 +6,61 @@
 
 ## 總體流程圖
 
-本流程**依三組截點（09:00 / 09:15 / 09:30）**分別產出 X 與 Y：特徵為「截點前」分鐘資料與壓縮結果，目標變數 Y 為**報酬率**（收盤－該截點），並在建模前做報酬率加工（如 log → simple）。
+本流程**依三組截點（09:00 / 09:15 / 09:30）**分別產出 X 與 Y：特徵為「截點前」分鐘資料與壓縮結果，目標變數 Y 為**報酬率**（收盤－該截點），並在建模前做報酬率加工（如 log → simple）。流程圖採**由左而右**分階段呈現，減少連線交錯。
 
 ```mermaid
-flowchart TB
-    subgraph INPUT["📥 輸入（data/）"]
-        raw["raw/<br/>TX*_1K.csv<br/>原始 K 線"]
-        target["target/<br/>y.xlsx / y.csv<br/>依截點之報酬率欄位"]
+flowchart LR
+    subgraph S1["① 輸入"]
+        raw["raw<br/>K 線"]
+        target["target<br/>報酬率欄位"]
     end
 
-    subgraph Y_PROCESS["Y 加工：報酬率"]
-        y_def["目標變數 = 收盤－截點 報酬率<br/>e.g. afternoon_return_0900, 0915, 0930"]
-        y_convert["log 報酬 → simple 報酬<br/>與特徵一致"]
+    subgraph S2["② Y 加工"]
+        y_proc["報酬率定義與轉換<br/>收盤－截點 · log→simple"]
     end
 
-    subgraph M01["01_data_ingestion"]
-        gen["generate_all_indicators"]
-        ext["extract_indicators_optimized<br/>+ 篩選（圖形類、週期>5）"]
+    subgraph S3["③ 01 資料與指標"]
+        m01["01_data_ingestion<br/>指標計算與篩選"]
+        extr["indicators_extracted<br/>7 群組"]
     end
 
-    subgraph DATA01["data/ 中繼"]
-        comp["indicators_complete/"]
-        extr["indicators_extracted/<br/>7 群組（共用）"]
+    subgraph S4["④ 02 三截點壓縮"]
+        m02["02_feature_compression<br/>split + autoencoder"]
+        out3["dataset / output<br/>0900 · 0915 · 0930"]
     end
 
-    subgraph CUTOFFS["三截點：09:01 / 09:16 / 09:31"]
-        t9["09:00 組"]
-        t15["09:15 組"]
-        t30["09:30 組"]
+    subgraph S5["⑤ 03 合併與訓練"]
+        merge["merge_and_train<br/>日表 + Y"]
+        merged["merged 三組"]
+        ag["AutoGluon 訓練<br/>每截點一組"]
+        pred["預測／模型"]
     end
 
-    subgraph M02["02_feature_compression"]
-        split["split_by_cutoff<br/>依截點切出「截點前」分鐘"]
-        ae["autoencoder<br/>滾動視窗壓縮<br/>（每組各做）"]
-    end
-
-    subgraph DATA02["data/ 產出 — 三組並列"]
-        ds9["dataset/0900/"]
-        ds15["dataset/0915/"]
-        ds30["dataset/0930/"]
-        w9["output_0900/<br/>W*, compressed_data"]
-        w15["output_0915/"]
-        w30["output_0930/"]
-    end
-
-    subgraph M03["03_modeling"]
-        merge["merge_and_train<br/>合併壓縮特徵 + Y 報酬率 → 日表"]
-        ag["AutoGluon 訓練<br/>（每截點一組）"]
-    end
-
-    subgraph DATA03["data/ 產出 — 三組"]
-        mfg9["merged_for_autogluon/<br/>0900"]
-        mfg15["0915"]
-        mfg30["0930"]
-    end
-
-    subgraph M04["04_visualization"]
-        viz["visualize_results<br/>MSE / 雷達 / 重建散點<br/>（可依截點產出）"]
-    end
-
-    subgraph M05["05_backtest"]
-        bt["backtest<br/>權益曲線、特徵重要性<br/>（可依截點評估）"]
-    end
-
-    subgraph OUT["📤 產出（data/）"]
+    subgraph S6["⑥ 04 視覺化"]
+        viz["04_visualization"]
         vis["visualizations/"]
+    end
+
+    subgraph S7["⑦ 05 回測"]
+        bt["05_backtest"]
         bto["backtest/"]
     end
 
-    raw --> gen
-    gen --> comp
-    comp --> ext
-    ext --> extr
-    target --> y_def
-    y_def --> y_convert
-    extr --> split
-    split --> t9
-    split --> t15
-    split --> t30
-    t9 --> ds9
-    t15 --> ds15
-    t30 --> ds30
-    ds9 --> ae
-    ds15 --> ae
-    ds30 --> ae
-    ae --> w9
-    ae --> w15
-    ae --> w30
-    w9 --> merge
-    w15 --> merge
-    w30 --> merge
-    y_convert --> merge
-    merge --> mfg9
-    merge --> mfg15
-    merge --> mfg30
+    raw --> m01
+    m01 --> extr
+    target --> y_proc
+    y_proc --> merge
+    extr --> m02
+    m02 --> out3
+    out3 --> merge
+    out3 --> viz
+    merge --> merged
     merge --> ag
-    w9 --> viz
-    w15 --> viz
-    w30 --> viz
-    viz --> vis
-    mfg9 --> bt
-    mfg15 --> bt
-    mfg30 --> bt
+    ag --> pred
+    pred --> bt
+    merged --> bt
     bt --> bto
+    viz --> vis
 ```
 
 ---
