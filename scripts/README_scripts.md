@@ -39,7 +39,7 @@
 
 | 腳本 | 手動執行 | 讀取（data/） | 寫入（data/） |
 |------|----------|----------------|----------------|
-| merge_and_train.py | `cd scripts/03_modeling && python merge_and_train.py` | output_0900/, target/y.xlsx | output_0900/merged_for_autogluon/ |
+| merge_and_train.py | `cd scripts/03_modeling && python merge_and_train.py` | output_0900/, target/y.xlsx | output_0900/merged_for_autogluon_0900/ |
 
 ---
 
@@ -59,7 +59,7 @@
 
 | 腳本 | 手動執行 | 讀取（data/） | 寫入（data/） |
 |------|----------|----------------|----------------|
-| backtest.py | `cd scripts/05_backtest && python backtest.py` | output_0900/merged_for_autogluon/, 預測結果 | backtest/ |
+| backtest.py | `cd scripts/05_backtest && python backtest.py` | output_0900/merged_for_autogluon_0900/, 預測結果 | backtest/ |
 
 ---
 
@@ -68,4 +68,4 @@
 1. 01 → 02（需 indicators_extracted）
 2. 02 → 03（需 output_0900 壓縮結果）
 3. 02 → 04（需 output_0900）
-4. 03 → 05（需 merged_for_autogluon 與預測）
+4. 03 → 05（需 merged_for_autogluon_0900 與預測）

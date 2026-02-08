@@ -69,9 +69,9 @@ flowchart LR
 |------|------|----------------|----------------|
 | 1 | **01_data_ingestion** | `raw/`, 或既有 `indicators_complete/` | `indicators_complete/`, `indicators_extracted/`（共用） |
 | 2 | **02_feature_compression** | `indicators_extracted/` | 三組：`dataset/0900`, `0915`, `0930/`；`output_0900`, `output_0915`, `output_0930/`（各含 W*） |
-| 3 | **03_modeling** | 各截點之 `output_*/` 壓縮結果、`target/` 內**依截點之報酬率欄位**（如 afternoon_return_0900） | 三組：`merged_for_autogluon/`（0900, 0915, 0930），AutoGluon 模型 |
+| 3 | **03_modeling** | 各截點之 `output_*/` 壓縮結果、`target/` 內**依截點之報酬率欄位**（如 afternoon_return_0900） | 三組：`merged_for_autogluon_0900/`、`_0915/`、`_0930/`（依截點後綴），AutoGluon 模型 |
 | 4 | **04_visualization** | 各截點 `output_*/`（JSON、W*） | `visualizations/`（可依截點分檔） |
-| 5 | **05_backtest** | 各截點 `merged_for_autogluon/`、預測結果 | `backtest/`（可依截點評估） |
+| 5 | **05_backtest** | 各截點 `merged_for_autogluon_*/`、預測結果 | `backtest/`（可依截點評估） |
 
 **執行順序**：`01 → 02 → 03 → 04 → 05`（各腳本路徑由 `config.py` 統一指向 `data/`）。
 

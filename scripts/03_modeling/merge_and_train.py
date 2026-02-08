@@ -2,13 +2,12 @@
 # -*- coding: utf-8 -*-
 """
 Merge scattered data and organize into AutoGluon-ready format with descriptive statistics.
-
-Based on: working/1030/autogluon_feature_selection.py
+本腳本僅負責 merge；AutoGluon 訓練請使用同目錄下 train_autogluon_colab.ipynb（可於 Colab 執行）。
 - Loads scattered CSV files and merges them
 - Builds daily cutoff samples with target (return from cutoff to close)
 - Optional: cleaning steps (constant, low variance, binary pattern, specified indicators)
 - Outputs descriptive statistics (summary_stats, missing_values) for the merged dataset
-- Saves cleaned data and optional AutoGluon training
+- Saves cleaned data (merged_for_autogluon_0900.csv 等)
 """
 
 import re
@@ -22,16 +21,6 @@ warnings.filterwarnings('ignore')
 from typing import Optional, List, Dict, Tuple
 from datetime import datetime as dt_datetime
 
-# AutoGluon (optional). Install with: pip install autogluon
-try:
-    from autogluon.tabular import TabularPredictor  # type: ignore[import-untyped]
-    from autogluon.core.metrics import make_scorer  # type: ignore[import-untyped]
-    AUTOGLUON_AVAILABLE = True
-except ImportError:
-    TabularPredictor = None  # type: ignore[misc, assignment]
-    make_scorer = None  # type: ignore[misc, assignment]
-    AUTOGLUON_AVAILABLE = False
-
 # ============== Config（僅讀寫 data/，由專案 config 提供）==============
 import sys
 from pathlib import Path as _Path
@@ -39,9 +28,11 @@ _REPO_ROOT = _Path(__file__).resolve().parents[2]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 import config as _config
-DATA_DIR = str(_config.get_dataset_dir("0900"))
+# 截點：0900 時輸出路徑與檔名皆帶 _0900 後綴（merged_for_autogluon_0900/、merged_for_autogluon_0900.csv）
+CUTOFF = "0900"
+DATA_DIR = str(_config.get_dataset_dir(CUTOFF))
 OUTPUT_BASE = str(_config.get_output_0900_dir())
-OUTPUT_DIR = str(_config.get_merged_for_autogluon_dir())
+OUTPUT_DIR = str(_config.get_merged_for_autogluon_dir(CUTOFF))
 MODEL_DIR = str(_config.get_output_0900_dir() / "models")
 
 # Target
@@ -91,12 +82,6 @@ if os.path.isfile(_y_path):
 EXTERNAL_Y_DATE_COLS = ("day_id", "date", "日期")
 EXTERNAL_Y_RETURN_COLS = ("afternoon_return_0900", "target_return", "y", "報酬率", "return")
 EXTERNAL_Y_IS_LOG_RETURN = True  # True if external column is log return (e.g. afternoon_return_0900)
-
-# Train AutoGluon (set False to only merge + stats)
-RUN_AUTOGLUON_TRAIN = False
-TIME_LIMIT = 600
-EVAL_METRIC = 'rmse'
-
 
 def _compute_cv(series: pd.Series) -> float:
     mean = np.abs(series.mean())
@@ -704,32 +689,14 @@ def main():
     df_clean = remove_specified_indicators(df_clean)
 
     # 5) Save merged (cleaned) table for AutoGluon
-    out_path = os.path.join(OUTPUT_DIR, "merged_for_autogluon.csv")
+    out_path = os.path.join(OUTPUT_DIR, f"merged_for_autogluon_{CUTOFF}.csv")
     df_clean.to_csv(out_path, index=False, encoding='utf-8-sig')
     print(f"\nSaved merged table: {out_path}")
 
     # 6) Descriptive statistics on cleaned data
     generate_descriptive_statistics(df_clean, os.path.join(OUTPUT_DIR, "stats_after_cleaning"))
 
-    # 7) Optional AutoGluon training
-    if RUN_AUTOGLUON_TRAIN and AUTOGLUON_AVAILABLE and TabularPredictor is not None:
-        df_ml = prepare_ml_table(df_clean)
-        if df_ml is not None:
-            train_size = int(0.8 * len(df_ml))
-            train_data = df_ml[:train_size]
-            test_data = df_ml[train_size:]
-            predictor = TabularPredictor(
-                label=TARGET_COLUMN,
-                problem_type='regression',
-                eval_metric=EVAL_METRIC,
-                path=os.path.join(MODEL_DIR, 'autogluon_merged')
-            )
-            predictor.fit(train_data, time_limit=TIME_LIMIT, presets='best_quality')
-            print("AutoGluon training done.")
-    else:
-        if RUN_AUTOGLUON_TRAIN and not AUTOGLUON_AVAILABLE:
-            print("AutoGluon not installed; skip training.")
-    print("\nDone.")
+    print("\nDone. AutoGluon 訓練請使用同目錄 train_autogluon_colab.ipynb。")
 
 
 if __name__ == "__main__":

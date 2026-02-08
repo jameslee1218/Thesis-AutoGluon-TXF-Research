@@ -61,9 +61,9 @@ def get_output_cutoff_dir(cutoff: str):
     """依截點代號取得 output 目錄，如 output_0900、output_0915、output_0930。"""
     return DATA_ROOT / f"output_{cutoff}"
 
-def get_merged_for_autogluon_dir():
-    """03 合併表輸出目錄。"""
-    return DATA_ROOT / "output_0900" / "merged_for_autogluon"
+def get_merged_for_autogluon_dir(cutoff: str = "0900"):
+    """03 合併表輸出目錄；依截點加後綴，例如 0900 → output_0900/merged_for_autogluon_0900。"""
+    return DATA_ROOT / f"output_{cutoff}" / f"merged_for_autogluon_{cutoff}"
 
 def get_visualizations_dir():
     """04 視覺化輸出目錄。"""

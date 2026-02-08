@@ -1,6 +1,6 @@
 # 05_backtest
 
-- **讀取（data/）**：`output_0900/merged_for_autogluon/`、預測結果
+- **讀取（data/）**：`output_0900/merged_for_autogluon_0900/`、預測結果
 - **寫入（data/）**：`backtest/`（權益曲線、特徵重要性、回測報告）
 
 ## 手動執行
