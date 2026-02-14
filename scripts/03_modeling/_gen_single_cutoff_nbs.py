@@ -8,24 +8,28 @@ with open("scripts/03_modeling/train_autogluon_colab.ipynb") as f:
 
 PATH_TEMPLATE = '''from pathlib import Path
 
-# ========== 路徑設定（Colab 請先跑上方「掛載 Drive」） ==========
+# ========== 輸入／輸出路徑（可直接寫死，留空則用預設） ==========
+# 輸入：合併後的 CSV 檔
+MERGED_CSV_PATH = ""  # 例: "/content/drive/MyDrive/xxx/merged_for_autogluon_0900.csv"
+# 輸出：模型與結果的根目錄（底下會建 train2y/、train3y/... 及 roll_YYYY/）
+OUTPUT_ROOT = ""  # 例: "/content/drive/MyDrive/xxx/models/0900"
+
+# 預設路徑（當上述留空時使用）
 DRIVE_PROJECT_ROOT = "/content/drive/MyDrive/Thesis-AutoGluon-TXF-Research"
 LOCAL_PROJECT_ROOT = "/Volumes/Transcend/thesis/github_clone/Thesis-AutoGluon-TXF-Research"
-
 PROJECT_ROOT = Path(DRIVE_PROJECT_ROOT) if IN_COLAB else Path(LOCAL_PROJECT_ROOT)
 DATA_ROOT = PROJECT_ROOT / "data"
 
-# 本 notebook 僅處理單一截點（可同時開三個 Colab 分別跑 0900/0915/0930，互不干擾）
 CUTOFF = "%s"
-# 訓練年數迴圈：2,3,4,5 年訓練 → 預測下一年，比較哪個較佳
 TRAIN_YEARS_LIST = [2, 3, 4, 5]
 LABEL = "target_return"
-TIME_LIMIT = 30  # 秒；每段訓練時間
+TIME_LIMIT = 30
 
-print("PROJECT_ROOT:", PROJECT_ROOT)
+merged_path = Path(MERGED_CSV_PATH) if MERGED_CSV_PATH else DATA_ROOT / "autogluon_ready" / CUTOFF / ("merged_for_autogluon_" + CUTOFF + ".csv")
+output_root = Path(OUTPUT_ROOT) if OUTPUT_ROOT else DATA_ROOT / "models" / CUTOFF
+print("輸入:", "✅" if merged_path.exists() else "❌", merged_path)
+print("輸出:", output_root)
 print("CUTOFF:", CUTOFF, "| TRAIN_YEARS_LIST:", TRAIN_YEARS_LIST)
-p = DATA_ROOT / "autogluon_ready" / CUTOFF / ("merged_for_autogluon_" + CUTOFF + ".csv")
-print("  資料:", "✅" if p.exists() else "❌", p)
 '''
 
 def to_nb_lines(s):
@@ -46,15 +50,14 @@ import pandas as pd
 from pathlib import Path
 from autogluon.tabular import TabularPredictor
 
-DATA_ROOT = Path(DRIVE_PROJECT_ROOT) / "data" if IN_COLAB else Path(LOCAL_PROJECT_ROOT) / "data"
-
+# merged_path、output_root 由上方路徑 cell 設定
 HAS_GPU = torch.cuda.is_available()
 print(f"系統檢查: GPU {'可用 ✅' if HAS_GPU else '未偵測到 ⚠️ (將使用 CPU)'}")
 print(f"訓練設定: 截點 {CUTOFF}, 訓練年數={TRAIN_YEARS_LIST}, 限時={TIME_LIMIT}秒")
 print(f"斷線續跑: 若 train{{N}}y/roll_YYYY 內已有 predictions.csv 則跳過\n")
 
 cutoff = CUTOFF
-merged_path = DATA_ROOT / "autogluon_ready" / cutoff / f"merged_for_autogluon_{cutoff}.csv"
+# merged_path 由上方路徑 cell 設定（可透過 MERGED_CSV_PATH 直接指定）
 if not merged_path.exists():
     print(f"❌ 檔案不存在: {merged_path}")
 else:
@@ -67,7 +70,7 @@ else:
         print(f"❌ 無 {LABEL} 欄位")
     else:
         years = sorted(df["year"].unique())
-        ROLL_OUTPUT = DATA_ROOT / "models" / cutoff
+        ROLL_OUTPUT = output_root  # 由上方路徑 cell 設定（可透過 OUTPUT_ROOT 直接指定）
         ROLL_OUTPUT.mkdir(parents=True, exist_ok=True)
         all_summary = []
         all_models_perf = []
@@ -280,11 +283,9 @@ for cutoff in ("0900", "0915", "0930"):
     nb_copy["cells"][11]["source"] = [f"## 5. 滾動訓練：截點 {cutoff}，train_years=2,3,4,5 迴圈，已存在則跳過\n"]
     nb_copy["cells"][12]["source"] = to_nb_lines(TRAIN_SINGLE)
     nb_copy["cells"][14]["source"] = [
-        f"# 輸出架構見 data/models/README.md\n",
-        f"# 彙總表：data/models/{cutoff}/summary_all_train_years.csv\n",
-        f"# 所有模型：data/models/{cutoff}/models_performance_all_train_years.csv\n",
+        f"# 彙總表與輸出由上方 OUTPUT_ROOT 決定\n",
         "from pathlib import Path\n",
-        f'summary_path = Path(DRIVE_PROJECT_ROOT if IN_COLAB else LOCAL_PROJECT_ROOT) / "data" / "models" / "{cutoff}" / "summary_all_train_years.csv"\n',
+        'summary_path = output_root / "summary_all_train_years.csv"\n',
         "if summary_path.exists():\n",
         "    display(pd.read_csv(summary_path))\n",
         "else:\n",
