@@ -37,6 +37,7 @@ CUTOFF_TIMES = {
 OUTPUT_BASE = DATA_ROOT / "autogluon_ready"
 
 TARGET_COLUMN = "target_return"
+MIN_YEAR = 2013  # 捨棄此年以前的資料（output2 無 encoder 壓縮結果）
 AGGREGATE_STATS = ("mean", "std", "min", "max", "median")
 INDICATORS = ["ADX_DMI", "AROON", "BBANDS", "MACD", "STOCH", "STOCHF", "STOCHRSI"]
 ORIGINAL_INDICATOR_COLUMNS = [
@@ -47,6 +48,12 @@ ORIGINAL_INDICATOR_COLUMNS = [
     "AROON_Down_14", "AROON_Up_14", "AROONOSC_14"
 ]
 EXTERNAL_Y_DATE_COLS = ("day_id", "date", "日期")
+# 各截點對應的收盤報酬欄位（y.xlsx 有 afternoon_return_0900/0915/0930）
+EXTERNAL_Y_RETURN_COL_BY_CUTOFF = {
+    "0900": "afternoon_return_0900",
+    "0915": "afternoon_return_0915",
+    "0930": "afternoon_return_0930",
+}
 EXTERNAL_Y_RETURN_COLS = ("afternoon_return_0900", "target_return", "y", "報酬率", "return")
 EXTERNAL_Y_IS_LOG_RETURN = True
 
@@ -286,8 +293,10 @@ def build_daily_aggregate_dataset(
     return pd.DataFrame(rows)
 
 
-def load_external_y(file_path: str) -> Optional[pd.DataFrame]:
-    """Load y.xlsx/y.csv with 收盤-9:00 報酬率; return [date, target_return]."""
+def load_external_y(file_path: str, return_col: Optional[str] = None) -> Optional[pd.DataFrame]:
+    """Load y.xlsx/y.csv with 收盤報酬率; return [date, target_return].
+    return_col: 指定欄位（如 afternoon_return_0915）；若 None 則取 EXTERNAL_Y_RETURN_COLS 第一個匹配。
+    """
     if not file_path or not Path(file_path).is_file():
         return None
     ext = Path(file_path).suffix.lower()
@@ -304,7 +313,10 @@ def load_external_y(file_path: str) -> Optional[pd.DataFrame]:
     if df.empty:
         return None
     date_col = next((c for c in EXTERNAL_Y_DATE_COLS if c in df.columns), None)
-    return_col = next((c for c in EXTERNAL_Y_RETURN_COLS if c in df.columns), None)
+    if return_col is None:
+        return_col = next((c for c in EXTERNAL_Y_RETURN_COLS if c in df.columns), None)
+    elif return_col not in df.columns:
+        return None
     if date_col is None or return_col is None:
         return None
     out = df[[date_col, return_col]].copy()
@@ -397,12 +409,23 @@ def process_cutoff(cutoff: str, compressed_by_year: List[Tuple[int, pd.DataFrame
         )
         df_daily = drop_original_indicators(df_daily)
 
-    # 4) Merge external y (0900 only uses y.xlsx; 0915/0930 use computed target from step 2)
-    if y_file and cutoff == "0900":
-        df_y = load_external_y(y_file)
+    # 4) Merge external y（三截點皆用 y.xlsx 對應欄位：afternoon_return_0900/0915/0930）
+    # dataset 已被 split_by_cutoff 截斷，無 EOD 資料，無法從 build_daily 計算 target_return
+    if y_file:
+        return_col = EXTERNAL_Y_RETURN_COL_BY_CUTOFF.get(cutoff)
+        df_y = load_external_y(y_file, return_col=return_col)
         if df_y is not None and len(df_y) > 0:
             df_daily = merge_external_y_into_daily(df_daily, df_y)
-            print(f"  Merged external y from {y_file}")
+            print(f"  Merged external y from {y_file} (col={return_col})")
+
+    # 4b) 捨棄 MIN_YEAR 以前的資料（output2 無該年 encoder 壓縮）
+    before = len(df_daily)
+    df_daily["date"] = pd.to_datetime(df_daily["date"], errors="coerce")
+    df_daily = df_daily[df_daily["date"].dt.year >= MIN_YEAR].copy()
+    df_daily["date"] = df_daily["date"].dt.date
+    dropped = before - len(df_daily)
+    if dropped > 0:
+        print(f"  Dropped {dropped} rows (year < {MIN_YEAR}); remaining: {len(df_daily)}")
 
     # 5) Cleaning
     df_clean = remove_constant_features(df_daily)
