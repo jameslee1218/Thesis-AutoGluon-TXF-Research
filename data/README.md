@@ -50,6 +50,21 @@ data/
 │   ├── feature_importance.csv
 │   └── backtest_report.csv
 │
+├── autogluon_ready/              【03 產出】AutoGluon 訓練用合併表（output2 壓縮版，取代舊 output_0900 W*）
+│   ├── 0900/                     ← 截點 09:00 前：merged_for_autogluon_0900.csv, summary_statistics.csv, missing_values.csv
+│   ├── 0915/                     ← 截點 09:15 前
+│   └── 0930/                     ← 截點 09:30 前
+│
+├── output2/                     【歸檔】按「年度」產出的 autoencoder 壓縮實驗（與 output_0900 視窗制並列）
+│   ├── window_2011-2013/        ← 視窗 2011–2013：compressed_data/, models/, plots/
+│   ├── year_2013/ … year_2023/  ← 各年度：results_*_*.json, autoencoder_results_*.xlsx, 以及 7 群組子目錄
+│   │   └── {ADX_DMI, AROON, BBANDS, MACD, STOCH, STOCHF, STOCHRSI}/
+│   │       ├── progress.json, result.json
+│   │       ├── compressed_data/*_compressed.csv
+│   │       ├── models/*_scaler.pkl, *_search_best.h5
+│   │       └── plots/*_training_history.png
+│   └── （來源：temp/output2，歸檔日期 2026-02-13）
+│
 └── legacy/                      【僅存檔】已棄用／可能錯誤 encoder 的舊資料，勿用於訓練
     ├── README.md                ← 說明
     └── merged_for_autogluon/    ← 舊合併表（新表由 03 產出至 output_0900/merged_for_autogluon_0900/）
@@ -77,6 +92,7 @@ data/
 - **dataset/0900/**：與 `indicators_extracted` 同檔名，僅保留截點前分鐘列。
 - **output_0900/W*/compressed_data/**：檔名如 `STOCH_W1_2011-2012_compress_2013-2013_compressed.csv`，內含 `datetime` 與壓縮欄（如 `*_compressed_0`）。
 - **merged_for_autogluon_0900.csv**：日頻表（0900 截點），每列一日，欄含壓縮特徵彙總與 `target_return`；0915/0930 則為 `_0915`、`_0930` 後綴。
+- **output2/**：依「年度」劃分的 autoencoder 壓縮實驗歸檔。每年度含多版 `results_*_YYYYMMDD_HHMMSS.json`（各技術指標 best_config、final_scores、history）、對應 `autoencoder_results_*.xlsx`，以及 7 個技術指標子目錄（STOCH, STOCHF, STOCHRSI, MACD, BBANDS, ADX_DMI, AROON），各含壓縮資料、模型與訓練曲線圖。
 
 ---
 

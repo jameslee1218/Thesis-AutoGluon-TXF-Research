@@ -65,6 +65,10 @@ def get_merged_for_autogluon_dir(cutoff: str = "0900"):
     """03 合併表輸出目錄；依截點加後綴，例如 0900 → output_0900/merged_for_autogluon_0900。"""
     return DATA_ROOT / f"output_{cutoff}" / f"merged_for_autogluon_{cutoff}"
 
+def get_autogluon_ready_dir(cutoff: str = "0900"):
+    """AutoGluon 訓練用合併表目錄（output2 壓縮版）；data/autogluon_ready/{0900,0915,0930}。"""
+    return DATA_ROOT / "autogluon_ready" / cutoff
+
 def get_visualizations_dir():
     """04 視覺化輸出目錄。"""
     return DATA_ROOT / "visualizations"
