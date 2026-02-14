@@ -12,3 +12,15 @@ python merge_and_train.py
 ```
 
 或由 main 觸發：`python main.py --step 3`
+
+## 未壓縮版資料（build_uncompressed_autogluon.py）
+
+產出**未經 autoencoder 壓縮**的 AutoGluon 訓練資料，並與壓縮版進行敘述統計與 A/B 比較。
+
+```bash
+python build_uncompressed_autogluon.py
+```
+
+- **輸出**：`data/autogluon_ready_uncompress/{0900,0915,0930}/merged_for_autogluon_*.csv`
+- **分析**：`data/analysis/compressed_vs_uncompressed/compressed_vs_uncompressed_comparison.xlsx`
+- **訓練**：將 Colab notebook 的 `MERGED_CSV_PATH` 指向 `autogluon_ready_uncompress/0900/merged_for_autogluon_0900.csv` 即可用未壓縮資料重新訓練

@@ -69,6 +69,10 @@ def get_autogluon_ready_dir(cutoff: str = "0900"):
     """AutoGluon 訓練用合併表目錄（output2 壓縮版）；data/autogluon_ready/{0900,0915,0930}。"""
     return DATA_ROOT / "autogluon_ready" / cutoff
 
+def get_autogluon_ready_uncompress_dir(cutoff: str = "0900"):
+    """未壓縮版 AutoGluon 訓練用目錄；data/autogluon_ready_uncompress/{0900,0915,0930}。"""
+    return DATA_ROOT / "autogluon_ready_uncompress" / cutoff
+
 def get_visualizations_dir():
     """04 視覺化輸出目錄。"""
     return DATA_ROOT / "visualizations"
@@ -76,3 +80,7 @@ def get_visualizations_dir():
 def get_backtest_dir():
     """05 回測輸出目錄。"""
     return DATA_ROOT / "backtest"
+
+def get_models_dir():
+    """03 AutoGluon 滾動訓練產出：data/models/{0900,0915,0930}。"""
+    return DATA_ROOT / "models"

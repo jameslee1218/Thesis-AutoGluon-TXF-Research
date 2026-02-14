@@ -9,6 +9,8 @@
 ### 新增
 
 - **03_modeling**：新增 `train_autogluon_colab.ipynb`，供 Colab 或本機執行 AutoGluon 訓練；輸入為 `merged_for_autogluon_0900.csv`，可掛載 Google Drive、設定路徑與時間切分後直接訓練並存模型至 `data/output_0900/models/`。
+- **03_modeling**：新增 `build_uncompressed_autogluon.py`，產出未經 autoencoder 壓縮的訓練資料至 `data/autogluon_ready_uncompress/`，並與壓縮版進行敘述統計與 A/B 比較（輸出至 `data/analysis/compressed_vs_uncompressed/`）。
+- **04_visualization**：`txf_ai_analysis.py` 改為產出結構化數據（單一 xlsx，24 個 Scenario 各一分頁），含敘述統計與統計檢定；Scenario 編號改為連續 01–24。
 
 ### 變更
 
@@ -24,6 +26,7 @@
 - **03_modeling**：`merge_and_train.py` 僅負責合併（merge）與敘述統計，**不再內含 AutoGluon 訓練**；訓練改由同目錄 `train_autogluon_colab.ipynb` 執行。
 - **合併表路徑**：merged 目錄與檔名加入截點後綴，目前為 `merged_for_autogluon_0900/`、`merged_for_autogluon_0900.csv`（由 `config.py` 之 `get_merged_for_autogluon_dir(cutoff="0900")` 決定）。
 - **資料目錄**：舊版合併表已移至 `data/legacy/merged_for_autogluon/`，並於 `data/legacy/README.md` 說明。
+- **config.py**：新增 `get_autogluon_ready_uncompress_dir(cutoff)`、`get_models_dir()`。
 
 ### 說明
 

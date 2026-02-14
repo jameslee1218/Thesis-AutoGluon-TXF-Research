@@ -2,10 +2,11 @@
 # -*- coding: utf-8 -*-
 """
 步驟 04：視覺化。
-執行：visualize_results.py（MSE 時間線、壓縮雷達圖、重建散點圖）
-（請將腳本置於本目錄，並改為使用 config 路徑。）
+- visualize_results.py：MSE 時間線、壓縮雷達圖、重建散點圖（需 output_0900）
+- txf_ai_analysis.py：台指期 AI 模型全方位績效與特徵分析（需 data/models）
 """
 
+import argparse
 import os
 import subprocess
 import sys
@@ -18,17 +19,20 @@ if str(REPO_ROOT) not in sys.path:
 
 import config  # noqa: E402
 
-SCRIPT = "visualize_results.py"  # 對應 01w5 的 03_visualize_results.py
+SCRIPTS = [
+    "visualize_results.py",
+    "txf_ai_analysis.py",
+]
 
 
-def run():
-    path = MODULE_DIR / SCRIPT
+def run(script: str) -> bool:
+    path = MODULE_DIR / script
     if not path.exists():
-        print(f"[04] 跳過（不存在）: {SCRIPT}")
+        print(f"[04] 跳過（不存在）: {script}")
         return True
-    print(f"[04] 執行: {SCRIPT}")
+    print(f"[04] 執行: {script}")
     ret = subprocess.run(
-        [sys.executable, SCRIPT],
+        [sys.executable, script],
         cwd=str(MODULE_DIR),
         env=os.environ.copy(),
     )
@@ -36,5 +40,11 @@ def run():
 
 
 if __name__ == "__main__":
-    ok = run()
+    parser = argparse.ArgumentParser(description="04 視覺化")
+    parser.add_argument("--script", choices=SCRIPTS + ["all"], default="all", help="執行腳本 (預設 all)")
+    args = parser.parse_args()
+    if args.script == "all":
+        ok = all(run(s) for s in SCRIPTS)
+    else:
+        ok = run(args.script)
     sys.exit(0 if ok else 1)
