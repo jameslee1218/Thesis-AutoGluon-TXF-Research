@@ -12,11 +12,15 @@
 
 ### 變更
 
-- **train_autogluon_colab.ipynb**（2025-02 重構）：
+- **train_autogluon_colab**（2025-02 重構）：
   - **依序三組**：依序執行 0900 → 0915 → 0930 三組截點訓練。
   - **滾動視窗**：改為「三年訓練、預測第四年」（`TRAIN_YEARS=3`），取代原本兩年訓練預測第三年。
   - **斷線續跑**：若 `data/models/{cutoff}/roll_{predict_year}/predictions.csv` 已存在則跳過該次訓練，便於 Colab 斷線後續跑。
   - **輸出**：各 cutoff 產出 `rolling_summary_final.csv`、`rolling_models_by_year.xlsx`；全部彙總於 `data/models/rolling_summary_all_cutoffs.csv`。
+  - **並行版**：新增 `train_autogluon_colab_0900.ipynb`、`train_autogluon_colab_0915.ipynb`、`train_autogluon_colab_0930.ipynb`，各處理單一截點，可同時開三個 Colab 並行跑，互不干擾。
+  - **訓練年比較**：迴圈 `TRAIN_YEARS_LIST = [2, 3, 4, 5]`，比較不同訓練年數效果；輸出至 `data/models/{cutoff}/train{N}y/roll_YYYY/`。
+  - **完整輸出**：`predictions_all_models.csv`、`models_performance_all_train_years.csv`、`data/models/README.md` 說明輸出架構。
+  - **特徵重要性優化**：僅計算 RMSE 前 3 與 Sharpe 前 3 模型的特徵重要性，去重後節省時間。
 - **03_modeling**：`merge_and_train.py` 僅負責合併（merge）與敘述統計，**不再內含 AutoGluon 訓練**；訓練改由同目錄 `train_autogluon_colab.ipynb` 執行。
 - **合併表路徑**：merged 目錄與檔名加入截點後綴，目前為 `merged_for_autogluon_0900/`、`merged_for_autogluon_0900.csv`（由 `config.py` 之 `get_merged_for_autogluon_dir(cutoff="0900")` 決定）。
 - **資料目錄**：舊版合併表已移至 `data/legacy/merged_for_autogluon/`，並於 `data/legacy/README.md` 說明。

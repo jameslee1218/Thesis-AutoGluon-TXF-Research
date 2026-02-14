@@ -11,6 +11,7 @@ Thumbs.db
 # 資料目錄：所有輸入與產出皆在 data/ 下，整個目錄不進版控（結構見 data/README.md）
 data/*
 !data/README.md
+!data/models/README.md
 
 # 二進位與大檔（若出現在 repo 其他位置）
 *.parquet
