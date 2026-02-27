@@ -4,6 +4,23 @@
 
 ---
 
+## Future Work: Regression vs. Classification
+
+We plan to compare **regression** and **multi-class classification** performance for trading decisions.
+
+- **Current approach (regression)**: Predict the daily close-to-cutoff return and use the predicted magnitude for trading decisions.
+- **Planned approach (ternary classification)**: Replace binary up/down with a **three-class** setup that includes a "no-trade zone" to filter out noise:
+
+  | Class | Label | Condition | Action |
+  |-------|-------|-----------|--------|
+  | Long  | +1 | Expected return > 0.2%  | Go long |
+  | Short | -1 | Expected return < -0.2% | Go short |
+  | Hold  |  0 | -0.2% ≤ return ≤ 0.2%  | No trade |
+
+This forces the model to focus on **meaningful moves** and ignore small, range-bound noise.
+
+---
+
 ## 總體流程圖
 
 本流程**依三組截點（09:00 / 09:15 / 09:30）**分別產出 X 與 Y：特徵為「截點前」分鐘資料與壓縮結果，目標變數 Y 為**報酬率**（收盤－該截點），並在建模前做報酬率加工（如 log → simple）。
