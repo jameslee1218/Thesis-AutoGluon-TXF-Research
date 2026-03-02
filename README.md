@@ -30,6 +30,7 @@ This forces the model to focus on **meaningful moves** and ignore small, range-b
 | **1. 缺少 S&P 500 資訊** | 合併表（`merged_for_autogluon_*`）目前未包含前日美股（S&P 500）漲跌幅欄位；需從 macro / daily 來源合併後再供 AutoGluon 使用。 |
 | **2. 敘述統計不完整** | 部分壓縮特徵未計算出五個敘述統計（mean、std、min、max、median），有些群組缺少 `_std` 等欄位；需修正壓縮或合併流程，確保每個特徵皆有完整五維。 |
 | **3. 多元分類 vs. 回歸比較** | 將嘗試改為使用多元分類問題（如三類：Long / Short / Hold）與回歸問題作比較，評估何者更適合實務交易決策。 |
+| **4. 重新評估技術指標原始資料** | 回頭檢視技術指標原始資料（indicators_complete / indicators_extracted / technical_indicators_data_extracted）的狀況，包含欄位數、週期篩選（如週期 ≤ 5）、各指標首次有值的列索引等，確保與敘述統計前的輸入一致。 |
 
 ---
 
