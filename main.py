@@ -14,8 +14,8 @@ Pipeline 主程式：依序執行 01～05 模組。
          → run_step(n) 對每個 n 執行 subprocess(scripts/0n_*/run.py)
   run.py（各模組）→ 依序執行同目錄下腳本：
     01: generate_all_indicators.main / extract_indicators_optimized（或直接執行 .py）
-    02: split_by_cutoff（對應 01_split_data）, autoencoder.main（對應 02_autoencoder）
-    03: merge_and_train.main（對應 04_merge_features）
+    02: Legacy（主流程停用，不再執行 AE）
+    03: merge_for_autogluon.main（時間序列寬表 + cutoff target）
     04: visualize_results.main（對應 03_visualize_results）
     05: backtest（新建）
   上述腳本需改為從 config 讀取路徑後，置於對應 scripts/0X_*/ 下即可被 main 調用。
@@ -52,6 +52,9 @@ def run_step(step: int) -> bool:
     name = step_dirs.get(step)
     if not name:
         return False
+    if step == 2:
+        print("[main] 步驟 2（02_feature_compression）已停用，保留為 Legacy。")
+        return True
     run_py = REPO_ROOT / "scripts" / name / "run.py"
     if not run_py.exists():
         print(f"[main] 未找到 scripts/{name}/run.py，跳過步驟 {step}。")
@@ -85,9 +88,9 @@ def main():
     load_config()
 
     STEPS_INFO = [
-        (1, "01_data_ingestion", "指標計算與篩選 → indicators_complete, indicators_extracted"),
-        (2, "02_feature_compression", "截點切分 + Autoencoder 壓縮 → dataset/, output_0900|0915|0930/"),
-        (3, "03_modeling", "合併日表 + Y 報酬率 + AutoGluon 訓練 → merged_for_autogluon, 預測/模型"),
+        (1, "01_data_ingestion", "五大面向指標計算與提取 → indicators_complete, indicators_extracted"),
+        (2, "02_feature_compression", "Legacy（停用）：舊版 split + autoencoder"),
+        (3, "03_modeling", "攤平寬表 + cutoff 報酬率 → autogluon/all|0900|0915|0930"),
         (4, "04_visualization", "MSE / 雷達 / 重建散點 → visualizations/"),
         (5, "05_backtest", "樣本外回測、特徵重要性 → backtest/"),
     ]

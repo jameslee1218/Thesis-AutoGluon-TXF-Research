@@ -17,5 +17,9 @@ tensorflow>=2.10.0
 # Plotting (02, 04, 05)
 matplotlib>=3.5.0
 
+# 04_visualization txf_ai_analysis (外部數據、回歸)
+scipy>=1.7.0
+yfinance>=0.2.0
+
 # 03_modeling (optional; install separately if needed)
 # autogluon.tabular>=1.0.0

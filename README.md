@@ -1,211 +1,154 @@
-# Thesis-AutoGluon-TXF-Research
+# Thesis-AutoGluon-TXF-Research v2.0
 
-本專案為**台灣期貨市場（TXF）量化研究流程**：以盤前／早盤技術指標經 Autoencoder 滾動視窗壓縮後，合併為日頻特徵表，再以 AutoGluon 建模預測「截點至收盤」報酬率，旨在研究早盤走勢對於該時點到收盤之資訊含量。
+本版本為研究流程重構版：主流程改為「原始資料 -> 指標日檔 -> cutoff 寬表 -> matrix 訓練評估」，並將 Autoencoder 路線降級為 Legacy 參考。
 
----
+## 1. v2.0 核心變更
 
-## Future Work: Regression vs. Classification
+- 主流程改為 `01_data_ingestion -> 03_modeling -> 04_visualization -> 05_backtest`。
+- `02_feature_compression` 保留為 Legacy，不再是 `main.py` 的必要步驟。
+- `03_modeling` 新增 `merge_for_autogluon.py`，直接由 `indicators_complete` 產出 `autogluon/all|0900|0915|0930`。
+- 導入 matrix 訓練框架（`colab_train_matrix_core.py` + `train_matrix_*.ipynb` + runbook）。
+- README 與腳本說明改為以 v2.0 流程為主，避免舊路徑誤用。
 
-We plan to compare **regression** and **multi-class classification** performance for trading decisions.
+## 2. 研究問題與方法對齊
 
-- **Current approach (regression)**: Predict the daily close-to-cutoff return and use the predicted magnitude for trading decisions.
-- **Planned approach (ternary classification)**: Replace binary up/down with a **three-class** setup that includes a "no-trade zone" to filter out noise:
+研究主題：
+- 早盤不同截點（`0900`、`0915`、`0930`）是否可有效預測截點到收盤報酬。
+- 不同訓練目標（預設/Sharpe）、模型家族（Tabular/TimeSeries）與特徵集（full/premarket3）下，樣本外表現差異。
 
-  | Class | Label | Condition | Action |
-  |-------|-------|-----------|--------|
-  | Long  | +1 | Expected return > 0.2%  | Go long |
-  | Short | -1 | Expected return < -0.2% | Go short |
-  | Hold  |  0 | -0.2% ≤ return ≤ 0.2%  | No trade |
+v2.0 方法：
+- 輸入特徵採五大面向（跨日、量價、波動、動能、趨勢）。
+- Step 3 先產出每日寬表，再以 matrix 框架做 rolling 訓練與測試。
+- 每個 cutoff 均有獨立資料檔與結果，避免路徑硬綁 `0900`。
 
-This forces the model to focus on **meaningful moves** and ignore small, range-bound noise.
-
----
-
-## 待辦事項（TODO）
-
-以下為機器學習輸入資料的已知問題，待修復後再進行正式訓練：
-
-| 項目 | 說明 |
-|------|------|
-| **1. 缺少 S&P 500 資訊** | 合併表（`merged_for_autogluon_*`）目前未包含前日美股（S&P 500）漲跌幅欄位；需從 macro / daily 來源合併後再供 AutoGluon 使用。 |
-| **2. 敘述統計不完整** | 部分壓縮特徵未計算出五個敘述統計（mean、std、min、max、median），有些群組缺少 `_std` 等欄位；需修正壓縮或合併流程，確保每個特徵皆有完整五維。 |
-| **3. 多元分類 vs. 回歸比較** | 將嘗試改為使用多元分類問題（如三類：Long / Short / Hold）與回歸問題作比較，評估何者更適合實務交易決策。 |
-| **4. 重新評估技術指標原始資料** | 回頭檢視技術指標原始資料（indicators_complete / indicators_extracted / technical_indicators_data_extracted）的狀況，包含欄位數、週期篩選（如週期 ≤ 5）、各指標首次有值的列索引等，確保與敘述統計前的輸入一致。 |
-
----
-
-## 總體流程圖
-
-本流程**依三組截點（09:00 / 09:15 / 09:30）**分別產出 X 與 Y：特徵為「截點前」分鐘資料與壓縮結果，目標變數 Y 為**報酬率**（收盤－該截點），並在建模前做報酬率加工（如 log → simple）。
+## 3. v2.0 流程圖
 
 ```mermaid
 flowchart LR
-    subgraph S1["① 輸入"]
-        raw["raw<br/>K 線"]
-        target["target<br/>報酬率欄位"]
-    end
-
-    subgraph S2["② Y 加工"]
-        y_proc["報酬率定義與轉換<br/>收盤－截點 · log→simple"]
-    end
-
-    subgraph S3["③ 01 資料與指標"]
-        m01["01_data_ingestion<br/>指標計算與篩選"]
-        extr["indicators_extracted<br/>篩選後群組"]
-    end
-
-    subgraph S4["④ 02 三截點壓縮"]
-        m02["02_feature_compression<br/>split + autoencoder"]
-        out3["dataset / output<br/>0900 · 0915 · 0930"]
-    end
-
-    subgraph S5["⑤ 03 合併與訓練"]
-        merge["merge_and_train<br/>日表 + Y"]
-        ag["AutoGluon 訓練<br/>每截點一組"]
-        pred["預測／模型"]
-    end
-
-    subgraph S6["⑥ 04 視覺化"]
-        viz["04_visualization"]
-        vis["visualizations/"]
-    end
-
-    subgraph S7["⑦ 05 回測"]
-        bt["05_backtest"]
-        bto["backtest/"]
-    end
-
-    raw --> m01
-    m01 --> extr
-    target --> y_proc
-    y_proc --> merge
-    extr --> m02
-    m02 --> out3
-    out3 --> merge
-    out3 --> viz
-    merge --> ag --> pred
-    pred --> bt
-    bt --> bto
-    viz --> vis
+    raw1mKline[raw 1-minute kline] --> step1Ingestion[step1_data_ingestion]
+    step1Ingestion --> indicatorsComplete[indicators_complete day files]
+    indicatorsComplete --> step3Merge[step3_merge_for_autogluon]
+    step3Merge --> autoAll[autogluon_all]
+    step3Merge --> auto0900[autogluon_0900]
+    step3Merge --> auto0915[autogluon_0915]
+    step3Merge --> auto0930[autogluon_0930]
+    auto0900 --> matrixTrain[matrix_training]
+    auto0915 --> matrixTrain
+    auto0930 --> matrixTrain
+    matrixTrain --> reports[models_matrix_reports]
+    reports --> step4Viz[step4_visualization]
+    reports --> step5Backtest[step5_backtest]
 ```
 
----
+## 4. 目錄與責任
 
-## 執行順序與依賴
-
-**三組截點**：所有 X（特徵）與 Y（目標）皆依 **09:00、09:15、09:30** 三種截點分別產出；Y 為**報酬率**（收盤－該截點），會經 log → simple 加工後再與特徵合併。
-
-| 步驟 | 模組 | 輸入（data/） | 產出（data/） |
-|------|------|----------------|----------------|
-| 1 | **01_data_ingestion** | `raw/`, 或既有 `indicators_complete/` | `indicators_complete/`, `indicators_extracted/`（共用） |
-| 2 | **02_feature_compression** | `indicators_extracted/` | 三組：`dataset/0900`, `0915`, `0930/`；`output_0900`, `output_0915`, `output_0930/`（各含 W*） |
-| 3 | **03_modeling** | 各截點之 `output_*/` 壓縮結果、`target/` 內**依截點之報酬率欄位**（如 afternoon_return_0900） | 三組：`merged_for_autogluon_0900/`、`_0915/`、`_0930/`（依截點後綴），AutoGluon 模型 |
-| 4 | **04_visualization** | 各截點 `output_*/`（JSON、W*） | `visualizations/`（可依截點分檔） |
-| 5 | **05_backtest** | 各截點 `merged_for_autogluon_*/`、預測結果 | `backtest/`（可依截點評估） |
-
-**執行順序**：`01 → 02 → 03 → 04 → 05`（各腳本路徑由 `config.py` 統一指向 `data/`）。
-
----
-
-## 目錄結構
-
-```
+```text
 Thesis-AutoGluon-TXF-Research/
-├── config.py              # 路徑設定（DATA_ROOT = data/）
-├── data/                   # 所有輸入與產出（見 data/README.md）
-├── scripts/
-│   ├── 01_data_ingestion/
-│   ├── 02_feature_compression/
-│   ├── 03_modeling/
-│   ├── 04_visualization/
-│   ├── 05_backtest/
-│   └── utils/              # config 引用、plotting_engine
-└── docs/
+├── config.py
+├── main.py
+├── README.md
+├── CHANGELOG.md
+├── data/
+│   ├── raw/
+│   ├── indicators_complete/
+│   ├── indicators_extracted/
+│   ├── autogluon/
+│   │   ├── all/
+│   │   ├── 0900/
+│   │   ├── 0915/
+│   │   └── 0930/
+│   ├── models/
+│   │   └── matrix_runs/
+│   ├── visualizations/
+│   └── backtest/
+├── docs/
+└── scripts/
+    ├── 01_data_ingestion/
+    ├── 02_feature_compression/   # Legacy
+    ├── 03_modeling/
+    ├── 04_visualization/
+    └── 05_backtest/
 ```
 
----
+## 5. 執行順序（研究主線）
 
-## 使用方式
+建議順序：
+1. `python main.py --step 1`
+2. `python main.py --step 3`
+3. 進 Colab 跑 `scripts/03_modeling/train_matrix_0900.ipynb`
+4. 進 Colab 跑 `scripts/03_modeling/train_matrix_0915.ipynb`
+5. 進 Colab 跑 `scripts/03_modeling/train_matrix_0930.ipynb`
+6. 視需求跑 `scripts/03_modeling/train_matrix_premarket3.ipynb`
+7. `python main.py --step 4`
+8. `python main.py --step 5`
 
-1. **依賴**：`pip install -r requirements.txt`（見根目錄 `requirements.txt`）。
-2. **設定**：路徑由根目錄 `config.py` 統一管理；可設環境變數 `DATA_ROOT`、`PROJECT_ROOT` 覆寫。
-3. **資料準備**：將原始 K 線放入 `data/raw/TX2011~20231222-1K/`，目標變數放入 `data/target/y.xlsx`（或 `y.csv`）。詳見 [data/README.md](data/README.md)。
-4. **所有程式僅讀寫 data/**：各腳本一律從 `config` 取得路徑，輸入與產出皆在 `data/` 下，無其他目錄寫入。
-5. **執行方式**（二擇一或並用）：
-   - **手動單檔**：進入該模組目錄後直接執行，例如  
-     `cd scripts/02_feature_compression && python split_by_cutoff.py`  
-     各腳本與 data/ 的對應見 [scripts/README_scripts.md](scripts/README_scripts.md)。
-   - **由 main 依序跑**：  
-     `python main.py`（全流程）、`python main.py --step 2`（只跑步驟 2）、`python main.py --list`（列步驟）。
+說明：
+- `main.py --step 2` 會顯示 Legacy 並跳過。
+- 路徑由 `config.py` 統一管理，可用 `PROJECT_ROOT`、`DATA_ROOT` 覆寫。
 
----
+## 6. matrix 訓練框架（v2.0）
 
-## 研究紀錄
+核心檔案：
+- `scripts/03_modeling/colab_train_matrix_core.py`
+- `scripts/03_modeling/COLAB_MATRIX_RUNBOOK.md`
+- `scripts/03_modeling/train_matrix_0900.ipynb`
+- `scripts/03_modeling/train_matrix_0915.ipynb`
+- `scripts/03_modeling/train_matrix_0930.ipynb`
+- `scripts/03_modeling/train_matrix_premarket3.ipynb`
 
-以下為開發過程中遇到的問題、心得與改進方式，供日後重現與避免重蹈覆轍。
+主要設定：
+- `train_years_list = [2, 3, 5]`
+- cutoff：`0900`、`0915`、`0930`
+- 特徵集：`full`、`premarket3`
+- 實驗組合（full）：tabular default/rmse、tabular sharpe/sharpe、timeseries default/rmse、timeseries default/sharpe
 
-### 4.1 Autoencoder／壓縮特徵「偷看未來」（資料洩漏）
+固定輸出：
+- `data/models/matrix_runs/reports/{feature_set}/run_summary.xlsx`
+- `comparison_by_metric.xlsx`
+- `comparison_tabular_vs_timeseries.xlsx`
+- `rolling_year_detail.xlsx`
+- `signal_performance.xlsx`
+- `feature_importance_pack.xlsx`
+- `summary_all_configs.xlsx`
 
-- **問題**：若用「全時段」資料一次訓練 autoencoder，再對所有年份做壓縮，等於用**未來資訊**來壓縮過去日期的特徵；合併後交給 AutoGluon 預測時，模型會間接用到未來資訊，結果不公正（尤其 MACD 等技術指標壓縮值會帶有洩漏）。
-- **改進**：
-  - **02_feature_compression** 改為**滾動視窗**：每個窗口「前 2 年訓練、第 3 年壓縮」（如 W1：2011–2012 訓練 → 2013 壓縮；W2：2013–2014 訓練 → 2015 壓縮），訓練時絕不使用該壓縮年之後的資料。
-  - **03_modeling** 合併時**依年對齊**：每日只取「該日所屬年份」對應窗口的壓縮特徵（例如 2013 年某日只用 W1 的壓縮，2014 年只用 W2），不混用窗口，避免任何未來資訊進入特徵。
+## 7. Legacy 邊界（保留但非主線）
 
-### 4.2 目標變數與訓練用表
+以下保留作歷史研究重現，不建議作 v2.0 主流程：
+- `scripts/02_feature_compression/*`
+- `scripts/03_modeling/merge_and_train.py`
+- `scripts/03_modeling/merge_output2_for_autogluon.py`
+- `scripts/03_modeling/build_uncompressed_autogluon.py`
 
-- **Y**：使用「收盤－截點」報酬率（如 afternoon_return_0900）；若來源為 log 報酬，03 會轉成 simple return 再寫入 `target_return`。
-- **訓練時**：合併表產出後，訓練 AutoGluon 前會 **drop 日期欄**（以及僅用截點前分鐘彙總），避免時間本身被當成特徵造成洩漏。
+## 8. 核對清單（你可直接對照研究需求）
 
-### 4.3 特徵清理與壓縮專一
+### 已完成對齊
+- [x] 主流程已從 AE 導向改為 Step 3 寬表導向。
+- [x] 三截點資料輸出統一在 `data/autogluon/{cutoff}`。
+- [x] matrix 訓練核心與 runbook 已納入版本。
+- [x] `main.py` 已把 Step 2 定義為 Legacy。
 
-- 合併階段會做常數欄、低變異、二元型態等清理，並可設定**只保留壓縮特徵、剔除原始技術指標欄**（`DROP_ORIGINAL_INDICATORS`），讓模型只吃壓縮後的彙總，不重複使用原始指標。
+### 待你核對（v2.0 出版前）
+- [ ] `data/raw`、`data/indicators_complete`、`data/autogluon/*` 是否齊全。
+- [ ] `target_return` 計算口徑是否符合你論文定義（simple return）。
+- [ ] `scripts/04_visualization` 與 `scripts/05_backtest` 的輸入路徑是否已全改為新主線輸出。
+- [ ] matrix 實驗組合是否完全符合你的最終比較設計（full/premarket3、tabular/timeseries、default/sharpe）。
+- [ ] 研究章節文件（第五節）與實際腳本命名是否一致。
 
-### 4.4 路徑與重現性
+## 9. 目前已知問題（尚未完全修復）
 
-- 所有輸入與產出**僅在 data/**，由 `config.py`（及可選的 `DATA_ROOT`）統一管理，方便本機／Colab 或不同機器重現；整個 `data/` 不進版控，僅 data/README 被追蹤。
+- 部分文件仍可能殘留舊流程用語（例如 `merge_and_train.py`、`output_0900` 單一路徑）。
+- `docs/第五節_自動化機器學習建構與優化.md` 仍描述部分舊版 `autogluon_ready_uncompress` 敘述，若作為最終論文章節請再與 v2.0 路徑做最終一致化。
+- `data/README.md`、`data/models/README.md` 曾被刪除，v2.0 建議恢復，避免再發生「少放資料」。
+- 舊 notebook 名稱在少數文件仍可能被引用，需要逐檔排查。
+- `scripts/04_visualization/visualize_results.py` 與 `scripts/05_backtest/backtest.py` 仍可能有舊輸入路徑邏輯，正式出稿前建議做一次全路徑 smoke test。
 
-### 4.5 為什麼刪除部分技術指標（精簡特徵）
+## 10. 安裝與快速開始
 
-- **CDL 蠟燭圖形態（61 個）**：以 `CDL` 開頭的 TA-Lib 圖形識別指標為**二元或三元離散**（常為 0 / 100 / -100），在機器學習中效果不佳且欄位過多；刪除後欄位由約 369 降至 308。
-- **常數／高缺失／索引類**：常數或幾乎常數、長週期在單日分鐘資料下缺漏嚴重；索引類（MAXINDEX_*、MININDEX_*）表示極值**位置**而非價格／趨勢，預測幫助有限。
-- **週期過長欄位**：單日僅約 301 筆分鐘，過長週期指標易缺值或無意義，故只保留要壓縮的 7 群組（且多為 14／20 週期）。
-- **策略取捨**：採「保守刪除」：先刪明顯無用（CDL、常數、高缺失、索引類），其餘讓模型或後續特徵選擇決定。
+```bash
+pip install -r requirements.txt
+python main.py --list
+python main.py --step 1
+python main.py --step 3
+```
 
-### 4.6 壓縮結果未寫回與合併閉環
-
-- **問題**：早期單一視窗版只產出 autoencoder 模型與 plots，**compressed_data 未系統性寫回**，「步驟 3：合併壓縮特徵回完整資料」一直尚未完成。
-- **解法**：改為**滾動視窗**（02 每窗產出 W*/compressed_data/），並在 03 中實作「依 compress_year 載入對應 W*、按日／年對齊後併入日表」，形成完整閉環。
-
-### 4.7 時間序列切分與評估（會議／文獻要點）
-
-- **交叉驗證**：一般 K 折假設樣本 iid，時間序列會違反；應採用**時間序列切分**或 **rolling / expanding window** 的驗證方式，避免未來資訊進入訓練。
-- **比例**：訓練／驗證／測試可採 80/10/10 或固定筆數；小資料常用 60/20/20。
-- **評估指標**：除 accuracy 外，建議用 **Sharpe ratio**、**F1** 等更貼近實務的指標；AutoGluon 可自訂 eval_metric。
-- **模型比較**：不同模型需做**統計檢定**或明確比較，並在論文中說明為何選用某些模型（文獻支持、實證結果）。
-
-### 4.8 特徵重要性與共線性
-
-- **問題**：特徵重要性若採「移除單一特徵看表現」時，若存在**高度相關**的特徵，移除其一可由另一補上，導致重要性被低估或失真。
-- **做法**：先做相關性／Spearman 分析，必要時用主成分或因素分析萃取；IC test／Spearman 與機器學習特徵重要性可並存，不必一致，但需在論文中說明取捨理由。
-
-### 4.9 明確排除的洩漏欄位
-
-- 下列欄位**不得**進入模型（會洩漏未來）：**P_close**（收盤價）、**P_0900 / P_0915 / P_0930**（該時點價格）、**close_return**（全日報酬）。僅能使用「截點前」的價格與報酬、以及「截點至收盤」的目標 Y。
-
-### 4.10 研究心得（早盤與午盤、條件式有效）
-
-- **早盤與午盤相關性**：曾因樣本自相關導致初版結果不可信；重做後發現早盤與午盤的**線性相關並不高**，需結合多特徵與非線性模型。
-- **顯著因子**：昨日美股報酬、開盤缺口較顯著；在**前一交易日台股大跌**等特定 regime 下，昨日美股與午盤呈更強負相關。
-- **技術分析條件式有效**：技術訊號往往僅在**特定市場狀態**下有效，關係具非線性與交互；故以 AutoML 系統性檢驗特徵資訊含量與策略可行性。
-- **特徵重要性實證**：美股前日、缺口最重要；早盤波動次之；單純成交量／VWAP／早盤漲跌幅在部分設定下幾乎無效。
-
-### 4.11 資料散落、格式與 y 對齊
-
-- **散落與路徑**：歷史資料曾分散於多個日期資料夾；且存在 Windows 絕對路徑，搬遷或跨機器需改為 config 或環境變數。
-- **格式**：現行流程統一為 CSV 與固定檔名 pattern。
-- **y 與日表合併**：y.xlsx 的 **day_id**（YYYYMMDD 整數）與日表的 **date** 型別不一致會導致 merge 失敗。解法：讀取 y 時將 day_id 轉成標準日期再合併；並將 log 報酬轉成 simple。
-
-### 4.12 Keras 模型載入與 Colab 路徑
-
-- **載入已存 Keras 模型**時若出現「無法解析 mse / 找不到 metric」：在 `load_model` 時傳入 **custom_objects**（如 `mse`、`mean_squared_error`），若仍失敗可改為 **compile=False** 載入。
-- **Colab**：部分流程曾在 Google Colab 執行，路徑為 Google Drive；本機重跑需改為本機 data/ 或 config 路徑；Colab 版參數需與本地 02_autoencoder 保持一致。
+接著依 `scripts/03_modeling/COLAB_MATRIX_RUNBOOK.md` 執行 matrix notebook。

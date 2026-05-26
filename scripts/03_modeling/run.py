@@ -2,8 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 步驟 03：整合與建模。
-執行：merge_and_train.py（合併壓縮特徵 + Y 報酬率 → 日表，可選 AutoGluon 訓練）
-（請將腳本置於本目錄，並改為使用 config 路徑。）
+執行：merge_for_autogluon.py（五大面向寬表 + cutoff target_return）。
 """
 
 import os
@@ -18,7 +17,7 @@ if str(REPO_ROOT) not in sys.path:
 
 import config  # noqa: E402
 
-SCRIPT = "merge_and_train.py"  # 對應 01w5 的 04_merge_features.py
+SCRIPT = "merge_for_autogluon.py"
 
 
 def run():

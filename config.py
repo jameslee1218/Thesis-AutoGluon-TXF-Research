@@ -29,7 +29,17 @@ CUTOFFS = ("0900", "0915", "0930")
 # ---------- 輸入（需自備或由 01 產出）----------
 def get_raw_kline_dir():
     """原始 1 分鐘 K 線目錄。"""
-    return DATA_ROOT / "raw" / "TX2011~20231222-1K"
+    primary = DATA_ROOT / "raw" / "TX2011~20231222-1K"
+    if primary.exists() and any(primary.glob("TX*_1K.csv")):
+        return primary
+    fallback_candidates = [
+        PROJECT_ROOT.parent / "TX2011~20231222-1K",
+        PROJECT_ROOT.parent.parent / "TX2011~20231222-1K",
+    ]
+    for fallback in fallback_candidates:
+        if fallback.exists() and any(fallback.glob("TX*_1K.csv")):
+            return fallback
+    return primary
 
 def get_indicators_complete_dir():
     """完整技術指標目錄（01 產出或自備）。"""
@@ -84,3 +94,8 @@ def get_backtest_dir():
 def get_models_dir():
     """03 AutoGluon 滾動訓練產出：data/models/{0900,0915,0930}。"""
     return DATA_ROOT / "models"
+
+
+def get_autogluon_dir():
+    """新版寬表輸出根目錄：data/autogluon。"""
+    return DATA_ROOT / "autogluon"

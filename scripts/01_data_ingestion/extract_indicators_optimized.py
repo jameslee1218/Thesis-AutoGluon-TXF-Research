@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-從 data/indicators_complete 讀取完整技術指標 CSV，提取 7 群組至 data/indicators_extracted。
-僅讀寫 data/，路徑由專案 config 提供。可手動執行或由 main.py --step 1 觸發。
+Step 01（新版）：從 indicators_complete 擷取五大面向欄位到 indicators_extracted。
+輸入/輸出皆為 xlsx（每交易日一檔）。
 """
 
 import sys
@@ -13,7 +13,6 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 import config
-import numpy as np
 import pandas as pd
 import time
 import warnings
@@ -22,49 +21,54 @@ from tqdm import tqdm
 warnings.filterwarnings("ignore")
 
 # 僅讀寫 data/
-INPUT_DIR = config.get_indicators_complete_dir()
-OUTPUT_DIR = config.get_extracted_indicators_dir()
+INPUT_DIR = Path(config.get_indicators_complete_dir())
+OUTPUT_DIR = Path(config.get_extracted_indicators_dir())
 BATCH_SIZE = 100
 
-INDICATOR_GROUPS = {
-    "MACD": ["MACD_12_26", "MACD_signal_12_26", "MACD_hist_12_26"],
-    "BBANDS": ["BBANDS_upper_20", "BBANDS_middle_20", "BBANDS_lower_20"],
-    "STOCH": ["STOCH_K_14", "STOCH_D_14"],
-    "STOCHRSI": ["STOCHRSI_K_14", "STOCHRSI_D_14"],
-    "STOCHF": ["STOCHF_K_14", "STOCHF_D_14"],
-    "ADX_DMI": ["ADX_14", "ADXR_14", "PDI_14", "MDI_14", "DX_14"],
-    "AROON": ["AROON_Down_14", "AROON_Up_14", "AROONOSC_14"],
-}
+OUTPUT_COLS = [
+    "datetime",
+    "open",
+    "high",
+    "low",
+    "close",
+    "volume",
+    "sp500_prev_return",
+    "open_gap_pct",
+    "vix_prev_close",
+    "vwap_bias_5",
+    "volume_roc_5",
+    "atr_5",
+    "kd_k_9",
+    "kd_d_9",
+    "linearreg_angle_5",
+]
 
 
 def get_required_columns():
-    required_cols = ["datetime"]
-    for group_name, cols in INDICATOR_GROUPS.items():
-        required_cols.extend(cols)
-    basic_cols = ["open", "high", "low", "close", "volume"]
-    required_cols.extend(basic_cols)
-    return list(set(required_cols))
+    return OUTPUT_COLS.copy()
 
 
 def extract_single_file(file_path, output_dir):
     try:
         required_cols = get_required_columns()
-        df = pd.read_csv(file_path, index_col=0, parse_dates=True)
+        df = pd.read_excel(file_path)
+        if "datetime" in df.columns:
+            df["datetime"] = pd.to_datetime(df["datetime"], errors="coerce")
         keep = [c for c in required_cols if c in df.columns]
         if keep:
             df = df[keep]
-        # 補齊群組欄位（可能部分不存在）
-        for group_name, cols in INDICATOR_GROUPS.items():
-            group_cols = [c for c in cols if c in df.columns]
-            if len(group_cols) > 0:
-                df[group_cols] = df[group_cols].ffill().bfill()
 
-        unique_dates = len(np.unique(df.index.date))
-        if unique_dates > 1:
-            return None, f"多個交易日 ({unique_dates})"
+        if "datetime" in df.columns:
+            unique_dates = df["datetime"].dt.normalize().nunique(dropna=True)
+            if unique_dates > 1:
+                return None, f"多個交易日 ({unique_dates})"
 
-        output_file = output_dir / file_path.name
-        df.to_csv(output_file)
+        fill_cols = [c for c in df.columns if c != "datetime"]
+        if fill_cols:
+            df[fill_cols] = df[fill_cols].ffill().bfill()
+
+        output_file = output_dir / file_path.name.replace("_complete.xlsx", "_extracted.xlsx")
+        df.to_excel(output_file, index=False, engine="openpyxl")
         return df, "成功"
     except Exception as e:
         return None, str(e)
@@ -75,8 +79,8 @@ def extract_all_data():
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     print(f"輸出目錄（data/）: {OUTPUT_DIR}")
 
-    all_files = list(INPUT_DIR.glob("*.csv"))
-    data_files = [f for f in all_files if not f.name.startswith("combined_")]
+    all_files = list(INPUT_DIR.glob("*.xlsx"))
+    data_files = [f for f in all_files if not f.name.startswith("._")]
     print(f"找到 {len(data_files)} 個檔案需要處理")
 
     if len(data_files) == 0:
@@ -115,8 +119,8 @@ def extract_all_data():
 
     elapsed = time.time() - start_time
     report_df = pd.DataFrame(extraction_report)
-    report_path = OUTPUT_DIR / "extraction_report.csv"
-    report_df.to_csv(report_path, index=False)
+    report_path = OUTPUT_DIR / "extraction_report.xlsx"
+    report_df.to_excel(report_path, index=False, engine="openpyxl")
 
     print(f"\n資料提取完成！")
     print(f"處理時間: {elapsed:.2f} 秒")
@@ -132,8 +136,7 @@ def main():
         print(f"輸入目錄不存在: {INPUT_DIR}")
         return
     print(f"輸入目錄（data/）: {INPUT_DIR}")
-    total_indicators = sum(len(v) for v in INDICATOR_GROUPS.values())
-    print(f"提取技術指標群組: {total_indicators} 個")
+    print(f"提取欄位數: {len(OUTPUT_COLS)}")
     report_df = extract_all_data()
     if report_df is not None:
         print(f"\n提取的資料已儲存至: {OUTPUT_DIR}")

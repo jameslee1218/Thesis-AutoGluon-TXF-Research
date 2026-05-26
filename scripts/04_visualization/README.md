@@ -4,8 +4,8 @@
 
 | 腳本 | 讀取 | 寫入 | 說明 |
 |------|------|------|------|
-| `visualize_results.py` | `output_0900/` (JSON, W*) | `visualizations/` | MSE 時間線、壓縮雷達圖、重建散點 |
-| `txf_ai_analysis.py` | `data/models/`, `autogluon_ready/` | `visualizations/txf_ai_analysis/txf_ai_analysis.xlsx` | 台指期 AI 模型全方位分析（單一 xlsx，每 Scenario 一分頁） |
+| `visualize_results.py` | `models/matrix_runs/`、`autogluon/{0900,0915,0930}/` | `visualizations/` | 以 v2.0 matrix 與 cutoff 輸出製作比較圖表 |
+| `txf_ai_analysis.py` | `data/models/`、`data/autogluon/` | `visualizations/txf_ai_analysis/txf_ai_analysis.xlsx` | 台指期 AI 模型全方位分析（單一 xlsx，每 Scenario 一分頁） |
 
 ## txf_ai_analysis 規格 (BDD)
 
@@ -38,3 +38,8 @@ python visualize_results.py
 ```
 
 或由 main 觸發：`python main.py --step 4`
+
+## v2.0 注意事項
+
+- 請先完成 Step 3 與 matrix notebook 訓練，確保 `data/models/matrix_runs/` 有輸出。
+- 若沿用舊版 `output_0900` 結果，請先確認分析腳本路徑設定，避免混用舊流程資料。
